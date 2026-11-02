@@ -41,6 +41,7 @@ void pk_app_init(pk_app_t *app, const char *sd_root) {
     }
     snprintf(app->status_msg, sizeof(app->status_msg),
              "PKHAX READY: %d SAVE(S) LOADED", found);
+    pk_log_event(app->sd_root, "pokedash", "INFO", app->status_msg);
 }
 
 void pk_app_step(pk_app_t *app, const pk_input_t *in) {
@@ -101,14 +102,17 @@ void pk_app_step(pk_app_t *app, const pk_input_t *in) {
                 snprintf(app->status_msg, sizeof(app->status_msg),
                          "SAVED (.BAK + CRC %04X): %s",
                          sv->last_checksum, k_action_labels[app->selected_action]);
+                pk_log_event(app->sd_root, "pokedash", "INFO", app->status_msg);
             } else {
                 snprintf(app->status_msg, sizeof(app->status_msg),
                          "ERR: FAILED WRITING %s", sv->label);
+                pk_log_event(app->sd_root, "pokedash", "ERROR", app->status_msg);
             }
         }
         if (in->down & PK_BTN_X) {
             int n = pk_scan_sd_saves(app->sd_root, &app->saves);
             snprintf(app->status_msg, sizeof(app->status_msg), "RESCANNED SD: %d SAVES", n);
+            pk_log_event(app->sd_root, "pokedash", "INFO", app->status_msg);
         }
     } else if (app->active_tab == PK_TAB_TYPE_CALC) {
         if (in->down & PK_BTN_DUP) app->calc_move_type = (app->calc_move_type + 17) % 18;
@@ -221,11 +225,13 @@ void pk_app_render(const pk_app_t *app) {
         float y = 34.0f + (float)i * 16.0f;
         bool sel = (i == app->selected_action);
         uint32_t row_bg = sel ? PK_RGBA8(65, 115, 195, 255) : PK_RGBA8(24, 32, 50, 255);
-        pk_draw_rect(6.0f, y, 308.0f, 14.0f, row_bg);
-        pk_draw_text(12.0f, y + 3.0f, 0.5f,
+        pk_draw_rect(6.0f, y, 300.0f, 14.0f, row_bg);
+        pk_draw_text(12.0f, y + 3.0f, 0.44f,
                      sel ? PK_RGBA8(255, 235, 115, 255) : PK_RGBA8(205, 215, 235, 255),
                      k_action_labels[i]);
     }
+    pk_draw_scrollbar(310.0f, 34.0f, 174.0f, 11, 11, 0,
+                      PK_RGBA8(24, 34, 52, 255), PK_RGBA8(95, 175, 255, 255));
 
     pk_draw_text(8.0f, 218.0f, 0.5f, PK_RGBA8(160, 175, 205, 255),
                  "TOUCH OR PRESS A TO WRITE SURGICAL EDIT");

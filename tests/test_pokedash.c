@@ -128,6 +128,37 @@ static void test_type_chart_and_ui(void) {
 
     const uint32_t *fb_top = pk_platform_host_get_framebuffer(PK_TARGET_TOP_LEFT);
     assert(fb_top != NULL && fb_top[0] != 0);
+
+    /* Fail-the-Fail negative assertions: NULL arguments, truncated save, corrupted CRC */
+    pk_save_summary_t bad;
+    assert(pk_load_save_file(NULL, &bad) == false);
+    assert(pk_load_save_file("build/test_sd/does_not_exist.sav", &bad) == false);
+    assert(pk_apply_surgical_edit(NULL, 0, PK_EDIT_MAX_IVS_6X31) == false);
+
+    /* Truncated 64-byte file must be rejected by pk_load_save_file */
+    const char *trunc_path = "build/test_sd/truncated.bin";
+    FILE *tfp = fopen(trunc_path, "wb");
+    assert(tfp != NULL);
+    fwrite("SHORT", 1, 5, tfp);
+    fclose(tfp);
+    assert(pk_load_save_file(trunc_path, &bad) == false);
+    remove(trunc_path);
+
+    /* Corrupting a byte inside the PKHX block must flip checksum_valid to false */
+    const char *corrupt_path = "build/test_sd/corrupt.sav";
+    assert(pk_create_mock_save(corrupt_path, PK_GEN_6_3DS, "CORRUPT", true));
+    FILE *cfp = fopen(corrupt_path, "r+b");
+    assert(cfp != NULL);
+    fseek(cfp, 0x1420, SEEK_SET);
+    uint8_t flip = 0xFF;
+    fwrite(&flip, 1, 1, cfp);
+    fclose(cfp);
+    assert(pk_load_save_file(corrupt_path, &bad) == true);
+    assert(bad.checksum_valid == false);
+    remove(corrupt_path);
+
+    struct stat log_st;
+    assert(stat("build/test_sd/3ds/logs/pokedash.log", &log_st) == 0 && log_st.st_size > 20);
     pk_platform_shutdown();
 }
 
